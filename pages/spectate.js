@@ -1,9 +1,8 @@
 /* eslint-disable @next/next/no-sync-scripts */
 import Head from 'next/head'
+import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
 import styles from '../styles/Home.module.css'
-import { useSession, signIn, signOut } from "next-auth/client"
-import { register, checkRegister } from '../lib/fileAccess'
 
 function showHistory() {
 	$('#history').show(0).animate({ "bottom": "0%", "top": "0%" }, 300);
@@ -39,17 +38,13 @@ for (var i = 0; i < 200; i++)
 	arr.push(i);
 
 export default function Home() {
-	const [session, loading] = useSession();
-	
-	const [registered, setRegistered] = useState(false);
-	
 	const [update, setUpdate] = useState(false);
 	const [version, setVersion] = useState(-1);
 	const [boardState, setBoardState] = useState({});
 	const [time, setTime] = useState(new Date());
 	const [buttons, setButtons] = useState(-1);
 	const [history, setHistory] = useState('');
-	const [voteState, setVoteState] = useState({count:{}});
+	const [voteState, setVoteState] = useState({ count: {} });
 
 	const increment = useCallback(() => {
 		setTime(new Date())
@@ -66,36 +61,25 @@ export default function Home() {
 			)
 			setVersion(data.version);
 		}, 1000)
-		
-		async function doRegister() {
-			if(boardState.time != undefined && session && !registered)
-			{
-				register(session.user.name);
-				setRegistered(await checkRegister(session.user.name))
-			}
-		}
-		doRegister();
-		
+
 		return () => {
 			clearInterval(r)
 		}
 	}, [increment]);
 	useEffect(() => {
-		if (session) {
-			async function getData() {
-				var data = await fetch('/api/gamestate', {
-					method: 'GET',
-					headers: { type: 'boardState', user: session.user.name }
-				}).then(
-					res => res.json()
-				)
-				if (JSON.stringify(data) != '{}') {
-					setBoardState(data);
-				}
+		async function getData() {
+			var data = await fetch('/api/gamestate', {
+				method: 'GET',
+				headers: { type: 'boardState', user: '' }
+			}).then(
+				res => res.json()
+			)
+			if (JSON.stringify(data) != '{}') {
+				setBoardState(data);
 			}
-			getData();
 		}
-	}, [session, version, update])
+		getData();
+	}, [version, update])
 
 	useKeyPress('1', () => setButtons(0));
 	useKeyPress('2', () => setButtons(1));
@@ -115,38 +99,8 @@ export default function Home() {
 		}
 	}
 	else {
-		if (new Date().getTime() < boardState.time) {
-			if (!session)
-			{
-				return (<div className={styles.login}>
-					<button onClick={() => signIn()}>Sign in to continue</button>
-				</div>)
-			}
-			else
-			{
-				console.log(registered)
-				if(registered)
-				{
-					return (<div className={styles.login}>
-						You have registered as {session.user.name}, the game starts in <br/>
-						{msToTime(boardState.time - new Date().getTime())}
-					</div>)
-				}
-				else
-				{
-					return (<div className={styles.login}>
-						You have logged in, wait a bit to register
-					</div>)
-				}
-			}
-		}
-		else {
-			if (session) {
-				return (<div className={styles.login}></div>)
-			}
-		}
+		return (<div className={styles.login}></div>)
 	}
-
 
 	var alives = [];
 	if (boardState.players != undefined)
@@ -165,62 +119,18 @@ export default function Home() {
 			</Head>
 			<div className={styles.menubar}>
 				<div className={styles.health}>
-					{heartDisplay(boardState.health)}
 				</div>
 				<div className={styles.energy}>
-					{energyDisplay(time, boardState.energy)}
+					{energyDisplay(time, 0)}
 				</div>
-				{
-					boardState.health > 0 ?
-						<div className={styles.actionMenu}>
-							<div className={buttons === 0 ? styles.col1s : styles.col1} onClick={() => setButtons(buttons === 0 ? -1 : 0)} key='1'>Move - 1</div>
-							<div className={buttons === 1 ? styles.col2s : styles.col2} onClick={() => setButtons(buttons === 1 ? -1 : 1)} key='2'>Attack - 1</div>
-							<div className={buttons === 2 ? styles.col3s : styles.col3} onClick={() => setButtons(buttons === 2 ? -1 : 2)} key='3'>Gift - 1</div>
-							<div className={styles.col4} onClick={() => {
-								fetch('api/gamestate', {
-									method: 'PUT',
-									headers: {
-										name: session.user.name,
-										button: 3,
-									}
-								})
-								setButtons(-1);
-								setUpdate(!update);
-							}} key='4'>Heal - 3</div>
-							<div className={styles.col5} onClick={() => {
-								fetch('api/gamestate', {
-									method: 'PUT',
-									headers: {
-										name: session.user.name,
-										button: 4,
-									}
-								})
-								setButtons(-1);
-								setUpdate(!update);
-							}} key='5'>Upgrade - 3</div>
-						</div>
-						:
-						null
-				}
 			</div>
 			<div className={styles.gameboard}>
 				{arr.map((num) => {
-					return getGridSquare(num, session ? session.user.name : '', players, () => {
-						fetch('api/gamestate', {
-							method: 'PUT',
-							headers: {
-								name: session.user.name,
-								position: num,
-								button: buttons,
-							}
-						})
-						setButtons(-1);
-						setUpdate(!update);
-					}, boardState.position, buttons === 1 || buttons === 2, boardState.range)
+					return getGridSquare(num, '', players, () => { }, boardState.position, buttons === 1 || buttons === 2, boardState.range)
 				})}
 			</div>
 			<div className={styles.overlay} onClick={hideHistory} id="history" style={{ display: "none" }}><p className={styles.subtitle}>{history}</p></div>
-			<div className={styles.overlayVote} onClick={hideVote} id="vote" style={{ display: "none" }}>{session ? getVoteButtons(alives, voteState, boardState.health > 0, session.user.name) : null}</div>
+			<div className={styles.overlayVote} onClick={hideVote} id="vote" style={{ display: "none" }}>{getVoteButtons(alives, voteState)}</div>
 			<div className={styles.overlay} onClick={hideHelp} id="help" style={{ display: "none" }}>
 				<p>
 					<span className={styles.title}>How to Play</span><br />
@@ -247,12 +157,6 @@ export default function Home() {
 				</p>
 			</div>
 			{
-				session ? null :
-					<div className={styles.login}>
-						<button onClick={() => signIn()}>Sign in to continue</button>
-					</div>
-			}
-			{
 				winner === -1 || winner === undefined ? null :
 					<div className={styles.login}>{winner} has won</div>
 			}
@@ -274,7 +178,7 @@ export default function Home() {
 					async function getVoteState() {
 						var data = await fetch('/api/votestate', {
 							method: 'GET',
-							headers: { user: session.user.name }
+							headers: { user: '' }
 						}).then(
 							res => res.json()
 						)
@@ -283,9 +187,9 @@ export default function Home() {
 					getVoteState();
 					showVote();
 				}}>Vote</a>
-				<b>{session ? session.user.name : null}</b>
+				<b>{null}</b>
 				<a onClick={showHelp}>Help</a>
-				<a onClick={() => signOut()}>Sign Out</a>
+				<a></a>
 			</footer>
 		</div>
 	)
@@ -321,67 +225,34 @@ function heartDisplay(health) {
 }
 
 function energyDisplay(time, energy) {
-	if (energy > 10) {
-		return <div>
-			<p className={styles.timeLeft}>
-				{
-					(23 - time.getUTCHours()).toString().concat(':', (59 - time.getUTCMinutes()).toString().padStart(2, '0'), ':', (59 - time.getUTCSeconds()).toString().padStart(2, '0'))
-				}
-			</p>
-			●x{energy}
-		</div>
-	}
-	else {
-		var a = '';
-		var b = '';
-		var c = '';
-		var d = '';
-		for (var i = 0; i < energy && i < 5; i++)
-			a += '●';
-		for (var i = 0; i < 5 - a.length; i++)
-			b += '●';
-		for (var i = 5; i < energy && i < 10; i++)
-			c += '●';
-		for (var i = 0; i < 5 - c.length; i++)
-			d += '●';
+	var a = '';
+	var b = '';
+	var c = '';
+	var d = '';
+	for (var i = 0; i < energy && i < 5; i++)
+		a += '●';
+	for (var i = 0; i < 5 - a.length; i++)
+		b += '●';
+	for (var i = 5; i < energy && i < 10; i++)
+		c += '●';
+	for (var i = 0; i < 5 - c.length; i++)
+		d += '●';
 
-		return <div>
-			<p className={styles.timeLeft}>
-				{
-					(23 - time.getUTCHours()).toString().concat(':', (59 - time.getUTCMinutes()).toString().padStart(2, '0'), ':', (59 - time.getUTCSeconds()).toString().padStart(2, '0'))
-				}
-			</p>
-			{a}<span className={styles.energyNone}>{b}</span><br />
-			{c}<span className={styles.energyNone}>{d}</span><br />
-		</div>
-	}
+	return <div>
+		<p className={styles.timeLeft}>
+			{
+				(23 - time.getUTCHours()).toString().concat(':', (59 - time.getUTCMinutes()).toString().padStart(2, '0'), ':', (59 - time.getUTCSeconds()).toString().padStart(2, '0'))
+			}
+		</p>
+		<span className={styles.energyNone}>●●●●●</span><br />
+		<span className={styles.energyNone}>●●●●●</span><br />
+	</div>
 }
 
-function getVoteButtons(alives, state, alive, user) {
-	if (alive)
-		return <div>You&apos;re not dead yet</div>;
+function getVoteButtons(alives, state) {
 	return (<div>Place your vote
 		<p>{alives.map((name) => {
-			return (<span className={name === state.user ? styles.selected : null} key={name} onClick={() => {
-				fetch('api/votestate', {
-					method: 'PUT',
-					headers: {
-						name: user,
-						votee: name
-					}
-				})
-			}}>{name} - {state.count[name] === undefined ? 0 : state.count[name]}</span>);
+			return (<span key={name}>{name} - {state.count[name] === undefined ? 0 : state.count[name]}</span>);
 		})}</p>
 	</div>)
-}
-
-function msToTime(duration) {
-	var seconds = Math.floor((duration / 1000) % 60),
-	minutes = Math.floor((duration / (1000 * 60)) % 60),
-	hours = Math.floor(duration / (1000 * 60 * 60));
-	
-	hours = (hours < 10) ? "0" + hours : hours;
-	minutes = (minutes < 10) ? "0" + minutes : minutes;
-	seconds = (seconds < 10) ? "0" + seconds : seconds;
-	return hours + ":" + minutes + ":" + seconds;
 }
