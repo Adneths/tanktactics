@@ -1,6 +1,5 @@
 /* eslint-disable @next/next/no-sync-scripts */
 import Head from 'next/head'
-import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
 import styles from '../styles/Home.module.css'
 
