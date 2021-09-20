@@ -3,7 +3,6 @@ import Head from 'next/head'
 import { useCallback, useEffect, useState } from 'react'
 import styles from '../styles/Home.module.css'
 import { useSession, signIn, signOut } from "next-auth/client"
-import { register, checkRegister } from '../lib/fileAccess'
 
 function showHistory() {
 	$('#history').show(0).animate({ "bottom": "0%", "top": "0%" }, 300);
@@ -40,16 +39,16 @@ for (var i = 0; i < 200; i++)
 
 export default function Home() {
 	const [session, loading] = useSession();
-	
+
 	const [registered, setRegistered] = useState(false);
-	
+
 	const [update, setUpdate] = useState(false);
 	const [version, setVersion] = useState(-1);
 	const [boardState, setBoardState] = useState({});
 	const [time, setTime] = useState(new Date());
 	const [buttons, setButtons] = useState(-1);
 	const [history, setHistory] = useState('');
-	const [voteState, setVoteState] = useState({count:{}});
+	const [voteState, setVoteState] = useState({ count: {} });
 
 	const increment = useCallback(() => {
 		setTime(new Date())
@@ -65,17 +64,27 @@ export default function Home() {
 				res => res.json()
 			)
 			setVersion(data.version);
-		}, 1000)
-		
-		async function doRegister() {
-			if(boardState.time != undefined && session && !registered)
-			{
-				register(session.user.name);
-				setRegistered(await checkRegister(session.user.name))
+			async function doRegister() {
+				if (boardState.time != undefined && session && !registered) {
+					fetch('/api/gamestate', {
+						method: 'GET',
+						headers: { type: 'register', name: session.user.name }
+					}).then(
+						res => res.json()
+					)
+					data = await fetch('/api/gamestate', {
+						method: 'GET',
+						headers: { type: 'registered', name: session.user.name }
+					}).then(
+						res => res.json()
+					)
+					setRegistered(data.registered)
+				}
 			}
-		}
-		doRegister();
-		
+			doRegister();
+		}, 1000)
+
+
 		return () => {
 			clearInterval(r)
 		}
@@ -116,24 +125,19 @@ export default function Home() {
 	}
 	else {
 		if (new Date().getTime() < boardState.time) {
-			if (!session)
-			{
+			if (!session) {
 				return (<div className={styles.login}>
 					<button onClick={() => signIn()}>Sign in to continue</button>
 				</div>)
 			}
-			else
-			{
-				console.log(registered)
-				if(registered)
-				{
+			else {
+				if (registered) {
 					return (<div className={styles.login}>
-						You have registered as {session.user.name}, the game starts in <br/>
+						You have registered as {session.user.name}, the game starts in <br />
 						{msToTime(boardState.time - new Date().getTime())}
 					</div>)
 				}
-				else
-				{
+				else {
 					return (<div className={styles.login}>
 						You have logged in, wait a bit to register
 					</div>)
@@ -377,9 +381,9 @@ function getVoteButtons(alives, state, alive, user) {
 
 function msToTime(duration) {
 	var seconds = Math.floor((duration / 1000) % 60),
-	minutes = Math.floor((duration / (1000 * 60)) % 60),
-	hours = Math.floor(duration / (1000 * 60 * 60));
-	
+		minutes = Math.floor((duration / (1000 * 60)) % 60),
+		hours = Math.floor(duration / (1000 * 60 * 60));
+
 	hours = (hours < 10) ? "0" + hours : hours;
 	minutes = (minutes < 10) ? "0" + minutes : minutes;
 	seconds = (seconds < 10) ? "0" + seconds : seconds;

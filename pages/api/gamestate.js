@@ -1,4 +1,4 @@
-import { getBoardState, getVersion, doAction, getHistory } from '../../lib/fileAccess'
+import { getBoardState, getVersion, doAction, getHistory, register, checkRegister } from '../../lib/fileAccess'
 
 export default async function handler(req, res) {
 	if (req.method === 'GET') {
@@ -19,8 +19,14 @@ export default async function handler(req, res) {
 				data = await getHistory();
 				res.status(200).json(data);
 				return;
-			case 'votes':
-				break;
+			case 'register':
+				register(req.headers.name);
+				res.status(200).json({});
+				return;
+			case 'registered':
+				data = await checkRegister(req.headers.name);
+				res.status(200).json(data);
+				return;
 		}
 		res.status(200).json({});
 		/*const version = await getVersion();
